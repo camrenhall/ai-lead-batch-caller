@@ -3,105 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV to Retell API Pipeline</title>
+    <title>CSV to API Processor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             padding: 20px;
             color: #333;
         }
         .container {
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            background-color: #f5f5f5;
+            border-radius: 8px;
             padding: 20px;
-            margin-bottom: 20px;
-            background-color: #f9f9f9;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         h1, h2, h3 {
-            color: #2c3e50;
-        }
-        .upload-area {
-            border: 2px dashed #ccc;
-            border-radius: 5px;
-            padding: 30px;
+            color: #333;
             text-align: center;
-            cursor: pointer;
-            margin: 20px 0;
-            transition: all 0.3s;
-        }
-        .upload-area:hover, .upload-area.dragover {
-            border-color: #7f8c8d;
-            background-color: #f1f1f1;
-        }
-        .btn {
-            background-color: #3498db;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-top: 10px;
-        }
-        .btn:hover {
-            background-color: #2980b9;
-        }
-        .btn:disabled {
-            background-color: #95a5a6;
-            cursor: not-allowed;
-        }
-        .hidden {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-        #fileInfo {
-            margin: 15px 0;
-            font-size: 14px;
-        }
-        #progress-container {
-            margin-top: 20px;
-            display: none;
-        }
-        #progress-bar {
-            height: 20px;
-            background-color: #3498db;
-            width: 0%;
-            border-radius: 5px;
-            transition: width 0.3s;
-        }
-        #log {
-            height: 200px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            padding: 10px;
-            margin-top: 20px;
-            font-family: monospace;
-            background-color: #f5f5f5;
-        }
-        .log-info {
-            color: #2980b9;
-        }
-        .log-success {
-            color: #27ae60;
-        }
-        .log-error {
-            color: #c0392b;
-        }
-        .api-config {
-            padding: 15px;
-            margin-top: 15px;
-            background-color: #ecf0f1;
-            border-radius: 5px;
+            margin-bottom: 20px;
         }
         .form-group {
             margin-bottom: 15px;
@@ -111,596 +33,717 @@
             margin-bottom: 5px;
             font-weight: bold;
         }
-        input[type="text"], input[type="number"] {
-            width: 100%;
+        input, button, select {
             padding: 8px;
+            border-radius: 4px;
             border: 1px solid #ddd;
-            border-radius: 3px;
+            font-size: 14px;
         }
-        .row-range {
-            display: flex;
-            gap: 10px;
-            align-items: center;
+        input[type="file"] {
+            width: 100%;
         }
-        .row-range input {
+        input[type="number"] {
             width: 80px;
         }
-        .preview-container {
-            margin-top: 20px;
-            display: none;
-        }
-        #jsonPreview {
-            width: 100%;
-            height: 200px;
-            font-family: monospace;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-            background-color: #f9f9f9;
-            white-space: pre;
-            overflow: auto;
-        }
-        .checkbox-container {
+        button {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            border: none;
+            padding: 10px 15px;
+            font-size: 15px;
             margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #apiKey {
+            width: 100%;
+        }
+        .range-inputs {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        pre {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin-top: 20px;
+            max-height: 300px;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        .info {
+            background-color: #d9edf7;
+            color: #31708f;
+        }
+        .warning {
+            background-color: #fcf8e3;
+            color: #8a6d3b;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        .button-secondary {
+            background-color: #5bc0de;
+        }
+        .button-secondary:hover {
+            background-color: #46b8da;
+        }
+        .button-warning {
+            background-color: #f0ad4e;
+        }
+        .button-warning:hover {
+            background-color: #eea236;
+        }
+        .log-window {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 20px;
+            background-color: #f9f9f9;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 3px 5px;
+            border-radius: 3px;
+        }
+        .record-preview {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .tabs {
+            display: flex;
+            margin-top: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-top: none;
+            background-color: white;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .collapse-toggle {
+            cursor: pointer;
+            color: #337ab7;
+            display: block;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .collapse-toggle::after {
+            content: " ▼";
+            font-size: 12px;
+        }
+        .collapse-toggle.collapsed::after {
+            content: " ►";
+        }
+        .collapsible {
+            margin-top: 10px;
+        }
+        .progress-bar-container {
+            width: 100%;
+            height: 20px;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #4CAF50;
+            border-radius: 5px;
+            width: 0%;
+            transition: width 0.3s;
         }
     </style>
 </head>
 <body>
-    <h1>CSV to Retell API Pipeline</h1>
-    
     <div class="container">
-        <h2>Upload CSV File</h2>
-        <div id="upload-area" class="upload-area">
-            <p>Drag & drop your CSV file here or click to browse</p>
-            <input type="file" id="fileInput" accept=".csv" class="hidden">
-            <div id="fileInfo"></div>
-            <button id="uploadBtn" class="btn" disabled>Load File</button>
+        <h1>CSV to API Processor</h1>
+        
+        <div class="form-group">
+            <label for="csvFile">Upload CSV File:</label>
+            <input type="file" id="csvFile" accept=".csv">
         </div>
         
-        <!-- Direct button for CSV upload as fallback -->
-        <div style="text-align: center; margin: 15px 0;">
-            <button onclick="document.getElementById('fileInput').click();" class="btn" style="background-color: #27ae60;">
-                Browse for CSV
-            </button>
+        <div class="form-group">
+            <label for="apiKey">API Authorization Key:</label>
+            <input type="text" id="apiKey" placeholder="Enter your API key">
         </div>
         
-        <div class="api-config">
-            <h3>API Configuration</h3>
-            <div class="form-group">
-                <label for="apiEndpoint">API Endpoint URL:</label>
-                <input type="text" id="apiEndpoint" value="https://api.retellai.com/create-batch-call">
+        <div class="form-group">
+            <label>Row Range (optional):</label>
+            <div class="range-inputs">
+                <input type="number" id="startRow" min="1" placeholder="Start" value="1">
+                <span>to</span>
+                <input type="number" id="endRow" min="1" placeholder="End">
             </div>
-            <div class="form-group">
-                <label for="apiKey">API Key (Authorization Header):</label>
-                <input type="text" id="apiKey" placeholder="Enter your API key">
-            </div>
-            <div class="form-group">
-                <label for="fromNumber">From Number:</label>
-                <input type="text" id="fromNumber" value="+18163360138" placeholder="Format: +1XXXXXXXXXX">
-            </div>
-            <div class="form-group">
-                <label>Row Range to Process:</label>
-                <div class="row-range">
-                    <input type="number" id="startRow" value="1" min="1">
-                    <span>to</span>
-                    <input type="number" id="endRow" value="1000" min="1">
-                </div>
-            </div>
-            <div class="checkbox-container">
-                <input type="checkbox" id="removeDuplicates" checked>
-                <label for="removeDuplicates" style="display: inline;">Remove duplicate phone numbers</label>
-            </div>
-            <div class="checkbox-container">
-                <input type="checkbox" id="previewFirst" checked>
-                <label for="previewFirst" style="display: inline;">Preview payload before sending</label>
-            </div>
-            <button id="processBtn" class="btn" disabled>Process Data</button>
         </div>
         
-        <div id="preview-container" class="preview-container">
+        <div class="button-group">
+            <button id="previewBtn" class="button-secondary">Preview Data</button>
+            <button id="processBtn">Process and Send to API</button>
+            <button id="clearBtn" class="button-warning">Clear All</button>
+        </div>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <div id="csvInfoContainer" style="display: none;" class="record-preview">
+            <h3>CSV Information</h3>
+            <p>Total rows: <span id="totalRows">0</span></p>
+            <p>Selected range: <span id="selectedRange">All</span></p>
+            <p>Unique phone numbers: <span id="uniquePhones">0</span></p>
+            
+            <div class="tabs">
+                <div class="tab active" data-tab="firstRecord">First Record</div>
+                <div class="tab" data-tab="lastRecord">Last Record</div>
+            </div>
+            
+            <div id="firstRecord" class="tab-content active">
+                <h4>First Record Preview:</h4>
+                <div id="firstRecordContent"></div>
+            </div>
+            
+            <div id="lastRecord" class="tab-content">
+                <h4>Last Record Preview:</h4>
+                <div id="lastRecordContent"></div>
+            </div>
+        </div>
+        
+        <div id="previewContainer" style="display: none;">
             <h3>JSON Payload Preview</h3>
-            <p>Below is a preview of the payload that will be sent to the API. The data shown represents the first entry in the tasks array.</p>
-            <pre id="jsonPreview"></pre>
-            <button id="confirmSendBtn" class="btn">Send to API</button>
+            <span class="collapse-toggle" id="payloadToggle">Show Full Payload</span>
+            <div class="collapsible" id="fullPayloadContainer" style="display: none;">
+                <pre id="fullJsonOutput"></pre>
+            </div>
+            <h4>Sample Entries</h4>
+            <pre id="sampleJsonOutput"></pre>
         </div>
         
-        <div id="progress-container">
+        <div id="progressContainer" style="display: none;">
             <h3>Processing Progress</h3>
-            <div id="progress-bar"></div>
-            <p id="progress-text">0%</p>
+            <div class="progress-bar-container">
+                <div id="progressBar" class="progress-bar"></div>
+            </div>
         </div>
         
-        <div>
-            <h3>Process Log</h3>
-            <div id="log"></div>
+        <div id="logContainer" style="display: none;">
+            <h3>Activity Log</h3>
+            <div id="logWindow" class="log-window"></div>
+        </div>
+        
+        <div id="resultContainer" style="display: none;">
+            <h3>API Response</h3>
+            <pre id="apiResponse"></pre>
         </div>
     </div>
-    
+
     <script>
-        // DOM elements
-        let uploadArea;
-        let fileInput;
-        let fileInfo;
-        let uploadBtn;
-        let processBtn;
-        let previewContainer;
-        let jsonPreview;
-        let confirmSendBtn;
-        let progressContainer;
-        let progressBar;
-        let progressText;
-        let logContainer;
-        let apiEndpointInput;
-        let apiKeyInput;
-        let fromNumberInput;
-        let startRowInput;
-        let endRowInput;
-        let removeDuplicatesCheckbox;
-        let previewFirstCheckbox;
-        
-        // CSV parsing and processing
-        let csvData = null;
-        let parsedRecords = null;
-        let fileName = '';
-        
-        // Initialize the application when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize DOM elements
-            uploadArea = document.getElementById('upload-area');
-            fileInput = document.getElementById('fileInput');
-            fileInfo = document.getElementById('fileInfo');
-            uploadBtn = document.getElementById('uploadBtn');
-            processBtn = document.getElementById('processBtn');
-            previewContainer = document.getElementById('preview-container');
-            jsonPreview = document.getElementById('jsonPreview');
-            confirmSendBtn = document.getElementById('confirmSendBtn');
-            progressContainer = document.getElementById('progress-container');
-            progressBar = document.getElementById('progress-bar');
-            progressText = document.getElementById('progress-text');
-            logContainer = document.getElementById('log');
-            apiEndpointInput = document.getElementById('apiEndpoint');
-            apiKeyInput = document.getElementById('apiKey');
-            fromNumberInput = document.getElementById('fromNumber');
-            startRowInput = document.getElementById('startRow');
-            endRowInput = document.getElementById('endRow');
-            removeDuplicatesCheckbox = document.getElementById('removeDuplicates');
-            previewFirstCheckbox = document.getElementById('previewFirst');
-            
+            // DOM Elements
+            const csvFileInput = document.getElementById('csvFile');
+            const apiKeyInput = document.getElementById('apiKey');
+            const startRowInput = document.getElementById('startRow');
+            const endRowInput = document.getElementById('endRow');
+            const processBtn = document.getElementById('processBtn');
+            const previewBtn = document.getElementById('previewBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const statusDiv = document.getElementById('status');
+            const resultContainer = document.getElementById('resultContainer');
+            const apiResponse = document.getElementById('apiResponse');
+            const logWindow = document.getElementById('logWindow');
+            const logContainer = document.getElementById('logContainer');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const previewContainer = document.getElementById('previewContainer');
+            const fullJsonOutput = document.getElementById('fullJsonOutput');
+            const sampleJsonOutput = document.getElementById('sampleJsonOutput');
+            const payloadToggle = document.getElementById('payloadToggle');
+            const fullPayloadContainer = document.getElementById('fullPayloadContainer');
+            const csvInfoContainer = document.getElementById('csvInfoContainer');
+            const totalRowsSpan = document.getElementById('totalRows');
+            const selectedRangeSpan = document.getElementById('selectedRange');
+            const uniquePhonesSpan = document.getElementById('uniquePhones');
+            const firstRecordContent = document.getElementById('firstRecordContent');
+            const lastRecordContent = document.getElementById('lastRecordContent');
+
+            // Global variables to store data
+            let csvData = null;
+            let processedData = null;
+
             // Event listeners
-            uploadArea.addEventListener('click', function() {
-                fileInput.click();
-            });
+            processBtn.addEventListener('click', processAndSendToAPI);
+            previewBtn.addEventListener('click', previewCSV);
+            clearBtn.addEventListener('click', clearAll);
+            payloadToggle.addEventListener('click', togglePayload);
+            csvFileInput.addEventListener('change', handleFileChange);
             
-            fileInput.addEventListener('change', handleFileSelect);
-            uploadArea.addEventListener('dragover', handleDragOver);
-            uploadArea.addEventListener('dragleave', handleDragLeave);
-            uploadArea.addEventListener('drop', handleDrop);
-            uploadBtn.addEventListener('click', loadFile);
-            processBtn.addEventListener('click', processData);
-            confirmSendBtn.addEventListener('click', sendToApi);
-            
-            // Add initial log message
-            logMessage('CSV to API Pipeline ready. Please upload a CSV file.', 'info');
-        });
-        
-        function handleFileSelect(e) {
-            const file = e.target.files[0];
-            if (file) {
-                validateFile(file);
-            }
-        }
-        
-        function handleDragOver(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadArea.classList.add('dragover');
-        }
-        
-        function handleDragLeave(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadArea.classList.remove('dragover');
-        }
-        
-        function handleDrop(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadArea.classList.remove('dragover');
-            
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                validateFile(file);
-            }
-        }
-        
-        function validateFile(file) {
-            fileName = file.name;
-            
-            if (!file.name.endsWith('.csv')) {
-                logMessage('Please upload a CSV file', 'error');
-                return;
-            }
-            
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                const content = e.target.result;
-                csvData = content;
-                fileInfo.innerHTML = `
-                    <strong>File:</strong> ${file.name}<br>
-                    <strong>Size:</strong> ${formatFileSize(file.size)}<br>
-                `;
-                uploadBtn.disabled = false;
-                logMessage(`File "${file.name}" ready to load`, 'info');
-            };
-            
-            reader.onerror = function() {
-                logMessage('Error reading the file', 'error');
-            };
-            
-            reader.readAsText(file);
-            
-            // Also show the filename immediately to provide feedback
-            fileInfo.innerHTML = `
-                <strong>File:</strong> ${file.name}<br>
-                <strong>Size:</strong> ${formatFileSize(file.size)}<br>
-                <em>Reading file contents...</em>
-            `;
-            logMessage(`Reading file: "${file.name}"`, 'info');
-        }
-        
-        function loadFile() {
-            if (!csvData) {
-                logMessage('No CSV file loaded', 'error');
-                return;
-            }
-            
-            // Parse CSV
-            logMessage('Parsing CSV to JSON...', 'info');
-            
-            try {
-                const result = parseCSV(csvData);
-                
-                if (result.errors && result.errors.length > 0) {
-                    logMessage(`CSV parsing error: ${result.errors[0].message}`, 'error');
-                    return;
-                }
-                
-                parsedRecords = result.data;
-                
-                if (!parsedRecords || parsedRecords.length === 0) {
-                    logMessage('No valid records found in CSV', 'error');
-                    return;
-                }
-                
-                logMessage(`Successfully parsed ${parsedRecords.length} records`, 'success');
-                
-                // Update max row number
-                endRowInput.max = parsedRecords.length;
-                endRowInput.value = Math.min(parseInt(endRowInput.value) || parsedRecords.length, parsedRecords.length);
-                
-                // Enable process button
-                processBtn.disabled = false;
-                
-                // Show sample of parsed data
-                if (parsedRecords.length > 0) {
-                    const sampleKeys = Object.keys(parsedRecords[0]).slice(0, 3);
-                    let sampleInfo = "Sample data (first row): ";
-                    sampleKeys.forEach(key => {
-                        sampleInfo += `${key}: "${parsedRecords[0][key]}", `;
+            // Tab handling
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Update active tab
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Update active content
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.remove('active');
                     });
-                    logMessage(sampleInfo.slice(0, -2), 'info');
-                }
-            } catch (error) {
-                logMessage(`Error processing CSV: ${error.message}`, 'error');
-            }
-        }
-        
-        function parseCSV(csvContent) {
-            try {
-                const lines = csvContent.split('\n');
-                const headers = lines[0].split(',').map(h => h.trim());
-                
-                const data = [];
-                const errors = [];
-                
-                for (let i = 1; i < lines.length; i++) {
-                    if (!lines[i].trim()) continue;
-                    
-                    // Handle quoted values correctly
-                    const row = {};
-                    let values = [];
-                    
-                    // Simple CSV parsing that handles quoted values
-                    let inQuote = false;
-                    let currentValue = '';
-                    let lineContent = lines[i];
-                    
-                    for (let j = 0; j < lineContent.length; j++) {
-                        const char = lineContent[j];
-                        
-                        if (char === '"' && (j === 0 || lineContent[j-1] !== '\\')) {
-                            inQuote = !inQuote;
-                        } else if (char === ',' && !inQuote) {
-                            values.push(currentValue.trim());
-                            currentValue = '';
-                        } else {
-                            currentValue += char;
-                        }
-                    }
-                    
-                    // Add the last value
-                    values.push(currentValue.trim());
-                    
-                    // Remove quotes from values
-                    values = values.map(v => v.replace(/^"(.*)"$/, '$1'));
-                    
-                    if (values.length !== headers.length) {
-                        // Try to handle cases where CSV might have inconsistent columns
-                        if (values.length < headers.length) {
-                            while (values.length < headers.length) {
-                                values.push('');
-                            }
-                        } else {
-                            errors.push({
-                                message: `Line ${i+1} has incorrect number of fields (found ${values.length}, expected ${headers.length})`,
-                                row: i
-                            });
-                            continue;
-                        }
-                    }
-                    
-                    headers.forEach((header, index) => {
-                        row[header] = values[index];
-                    });
-                    
-                    data.push(row);
-                }
-                
-                return { data, errors };
-            } catch (error) {
-                return { data: [], errors: [{ message: error.message }] };
-            }
-        }
-        
-        function processData() {
-            if (!parsedRecords || parsedRecords.length === 0) {
-                logMessage('No data to process', 'error');
-                return;
-            }
-            
-            if (!apiKeyInput.value) {
-                logMessage('API key is required', 'error');
-                return;
-            }
-            
-            if (!fromNumberInput.value) {
-                logMessage('From number is required', 'error');
-                return;
-            }
-            
-            // Get row range
-            const startRow = Math.max(1, parseInt(startRowInput.value));
-            const endRow = Math.min(parseInt(endRowInput.value), parsedRecords.length);
-            
-            if (startRow > endRow) {
-                logMessage('Invalid row range', 'error');
-                return;
-            }
-            
-            // Get selected records (using 0-based index)
-            let selectedRecords = parsedRecords.slice(startRow - 1, endRow);
-            logMessage(`Selected ${selectedRecords.length} records from row ${startRow} to ${endRow}`, 'info');
-            
-            // Process the records and create the payload
-            const payload = createPayload(selectedRecords);
-            
-            // Preview or send directly
-            if (previewFirstCheckbox.checked) {
-                // Show preview
-                displayPreview(payload);
-            } else {
-                // Send directly
-                sendPayloadToApi(payload);
-            }
-        }
-        
-        function createPayload(records) {
-            const fromNumber = fromNumberInput.value;
-            const removeDuplicates = removeDuplicatesCheckbox.checked;
-            
-            // Track phone numbers to remove duplicates if requested
-            const processedPhoneNumbers = new Set();
-            const tasks = [];
-            
-            records.forEach(record => {
-                // Find the first non-empty phone number
-                const phoneFields = ['Phone 1', 'Phone 2', 'Phone 3', 'Phone 4', 'Phone 5'];
-                let phoneNumber = null;
-                
-                for (const field of phoneFields) {
-                    if (record[field] && record[field].trim()) {
-                        // Format phone number (ensure it has +1 prefix)
-                        let formattedNumber = record[field].trim();
-                        if (!formattedNumber.startsWith('+')) {
-                            if (formattedNumber.startsWith('1')) {
-                                formattedNumber = '+' + formattedNumber;
-                            } else {
-                                formattedNumber = '+1' + formattedNumber;
-                            }
-                        }
-                        
-                        // Remove non-digit characters except the leading +
-                        formattedNumber = '+' + formattedNumber.substring(1).replace(/\D/g, '');
-                        
-                        phoneNumber = formattedNumber;
-                        break;
-                    }
-                }
-                
-                // Skip if no phone number found
-                if (!phoneNumber) {
-                    return;
-                }
-                
-                // Skip duplicates if requested
-                if (removeDuplicates && processedPhoneNumbers.has(phoneNumber)) {
-                    return;
-                }
-                
-                // Add to processed set
-                if (removeDuplicates) {
-                    processedPhoneNumbers.add(phoneNumber);
-                }
-                
-                // Create the task object for this record
-                const task = {
-                    to_number: phoneNumber,
-                    retell_llm_dynamic_variables: {
-                        clientLastName: record['Last Name'] || '',
-                        clientFullName: `${record['First Name'] || ''} ${record['Last Name'] || ''}`.trim(),
-                        clientPhoneNumber: phoneNumber,
-                        clientPropertyAddress: record['Property Address'] || ''
-                    }
-                };
-                
-                tasks.push(task);
+                    document.getElementById(this.getAttribute('data-tab')).classList.add('active');
+                });
             });
-            
-            // Create the final payload
-            return {
-                from_number: fromNumber,
-                tasks: tasks
-            };
-        }
-        
-        function displayPreview(payload) {
-            // Show just one task as an example if there are any
-            let previewPayload = {
-                from_number: payload.from_number,
-                tasks: payload.tasks.length > 0 ? [payload.tasks[0]] : []
-            };
-            
-            // Display the preview
-            jsonPreview.textContent = JSON.stringify(previewPayload, null, 2);
-            previewContainer.style.display = 'block';
-            
-            // Scroll to preview
-            previewContainer.scrollIntoView({ behavior: 'smooth' });
-            
-            // Log info
-            logMessage(`Payload prepared with ${payload.tasks.length} tasks. Please review and confirm.`, 'info');
-        }
-        
-        function sendToApi() {
-            // Hide preview
-            previewContainer.style.display = 'none';
-            
-            // Show progress
-            progressContainer.style.display = 'block';
-            
-            // Get the full payload again
-            const payload = createPayload(parsedRecords.slice(
-                parseInt(startRowInput.value) - 1, 
-                parseInt(endRowInput.value)
-            ));
-            
-            // Send to API
-            sendPayloadToApi(payload);
-        }
-        
-        async function sendPayloadToApi(payload) {
-            const apiEndpoint = apiEndpointInput.value;
-            const apiKey = apiKeyInput.value;
-            
-            try {
-                // Show progress at 50%
-                updateProgress(50);
-                
-                logMessage(`Sending payload with ${payload.tasks.length} tasks to ${apiEndpoint}...`, 'info');
-                
-                // In a real implementation, make the actual API call
-                // For demo purposes, we'll simulate the API call
-                await makeApiCall(apiEndpoint, apiKey, payload);
-                
-                // Update progress to 100%
-                updateProgress(100);
-                
-                logMessage('API call successful!', 'success');
-                
-            } catch (error) {
-                logMessage(`Error sending to API: ${error.message}`, 'error');
-                updateProgress(0);
+
+            // Initialize the log
+            initLog();
+
+            function handleFileChange() {
+                const file = csvFileInput.files[0];
+                if (file) {
+                    logEvent('File selected: ' + file.name, 'info');
+                    showStatus('CSV file selected. Click "Preview Data" to analyze.', 'info');
+                    
+                    // Clear previous results
+                    previewContainer.style.display = 'none';
+                    resultContainer.style.display = 'none';
+                    csvInfoContainer.style.display = 'none';
+                }
             }
-        }
-        
-        async function makeApiCall(url, apiKey, payload) {
-            // This would be a real API call in production
-            // For demo purposes, we'll simulate a response
-            return new Promise((resolve, reject) => {
-                // Simulate network delay (1-2 seconds)
-                setTimeout(() => {
-                    // 90% success rate for demo
-                    if (Math.random() < 0.9) {
-                        resolve({
-                            status: 200,
-                            data: {
-                                message: 'Calls scheduled successfully',
-                                batch_id: generateUUID(),
-                                successful_tasks: payload.tasks.length,
-                                failed_tasks: 0
+            
+            function initLog() {
+                logContainer.style.display = 'block';
+                logEvent('Application initialized', 'info');
+                logEvent('Ready to process CSV files', 'info');
+            }
+
+            function previewCSV() {
+                const file = csvFileInput.files[0];
+                
+                if (!file) {
+                    showStatus('Please select a CSV file', 'error');
+                    return;
+                }
+                
+                // Reset UI and show status
+                previewContainer.style.display = 'none';
+                csvInfoContainer.style.display = 'none';
+                showStatus('Analyzing CSV file...', 'info');
+                logEvent('Starting CSV analysis', 'info');
+                
+                // Parse CSV
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        try {
+                            csvData = results.data;
+                            logEvent(`CSV parsed successfully. ${csvData.length} rows found.`, 'success');
+                            
+                            // Set row input max values
+                            endRowInput.max = csvData.length;
+                            endRowInput.placeholder = `Max: ${csvData.length}`;
+                            
+                            if (!endRowInput.value) {
+                                endRowInput.value = csvData.length;
                             }
-                        });
+                            
+                            // Process data for preview
+                            previewData();
+                        } catch (error) {
+                            showStatus('Error analyzing data: ' + error.message, 'error');
+                            logEvent('Error: ' + error.message, 'error');
+                        }
+                    },
+                    error: function(error) {
+                        showStatus('Error parsing CSV: ' + error.message, 'error');
+                        logEvent('Error parsing CSV: ' + error.message, 'error');
+                    }
+                });
+            }
+            
+            function previewData() {
+                if (!csvData || csvData.length === 0) {
+                    showStatus('No CSV data available', 'error');
+                    return;
+                }
+                
+                try {
+                    // Apply row range filter
+                    let startRow = parseInt(startRowInput.value) || 1;
+                    let endRow = parseInt(endRowInput.value) || csvData.length;
+                    
+                    // Validate range
+                    startRow = Math.max(1, Math.min(startRow, csvData.length));
+                    endRow = Math.min(csvData.length, Math.max(endRow, startRow));
+                    
+                    // Update input values if they were adjusted
+                    startRowInput.value = startRow;
+                    endRowInput.value = endRow;
+                    
+                    // Create filtered data
+                    const filteredData = csvData.slice(startRow - 1, endRow);
+                    
+                    // Process the data for preview
+                    processedData = processData(filteredData);
+                    
+                    // Display CSV info
+                    totalRowsSpan.textContent = csvData.length;
+                    selectedRangeSpan.textContent = `${startRow} - ${endRow} (${endRow - startRow + 1} rows)`;
+                    uniquePhonesSpan.textContent = processedData.tasks.length;
+                    
+                    // Display first and last records
+                    displayRecordPreview(filteredData[0], firstRecordContent);
+                    displayRecordPreview(filteredData[filteredData.length - 1], lastRecordContent);
+                    
+                    // Display JSON preview (truncated)
+                    fullJsonOutput.textContent = JSON.stringify(processedData, null, 2);
+                    
+                    // Create sample for preview (first 2 and last 2 tasks if more than 4)
+                    let sampleData = {};
+                    if (processedData.tasks.length > 4) {
+                        sampleData = {
+                            from_number: processedData.from_number,
+                            tasks: [
+                                ...processedData.tasks.slice(0, 2),
+                                {to_number: "... more entries ...", retell_llm_dynamic_variables: "..."},
+                                ...processedData.tasks.slice(-2)
+                            ]
+                        };
                     } else {
-                        reject(new Error('API request failed'));
+                        sampleData = processedData;
                     }
-                }, 1000 + Math.random() * 1000);
-            });
-            
-            /* This would be the actual API call code in production:
-            
-            return fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': apiKey
-                },
-                body: JSON.stringify(payload)
-            }).then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+                    
+                    sampleJsonOutput.textContent = JSON.stringify(sampleData, null, 2);
+                    
+                    // Show preview UI
+                    previewContainer.style.display = 'block';
+                    csvInfoContainer.style.display = 'block';
+                    
+                    showStatus('Data preview ready. Review and click "Process and Send to API" to continue.', 'success');
+                    logEvent(`Preview generated for ${processedData.tasks.length} unique entries`, 'success');
+                    
+                } catch (error) {
+                    showStatus('Error generating preview: ' + error.message, 'error');
+                    logEvent('Preview error: ' + error.message, 'error');
                 }
-                return response.json();
+            }
+            
+            function displayRecordPreview(record, container) {
+                if (!record) {
+                    container.innerHTML = '<p>No record available</p>';
+                    return;
+                }
+                
+                let html = '<table style="width:100%; border-collapse: collapse;">';
+                html += '<tr><th style="text-align:left; padding:5px; border-bottom:1px solid #ddd;">Field</th><th style="text-align:left; padding:5px; border-bottom:1px solid #ddd;">Value</th></tr>';
+                
+                for (const [key, value] of Object.entries(record)) {
+                    html += `<tr><td style="padding:5px; border-bottom:1px solid #eee;">${key}</td><td style="padding:5px; border-bottom:1px solid #eee;">${value || ''}</td></tr>`;
+                }
+                
+                html += '</table>';
+                container.innerHTML = html;
+            }
+            
+            function processAndSendToAPI() {
+                const file = csvFileInput.files[0];
+                const apiKey = apiKeyInput.value.trim();
+                
+                if (!file) {
+                    showStatus('Please select a CSV file', 'error');
+                    return;
+                }
+                
+                if (!apiKey) {
+                    showStatus('Please enter an API key', 'error');
+                    return;
+                }
+                
+                if (!processedData) {
+                    showStatus('Please preview the data first', 'warning');
+                    return;
+                }
+                
+                // Confirm with user if there are many tasks
+                if (processedData.tasks.length > 50) {
+                    if (!confirm(`You are about to send ${processedData.tasks.length} API calls. Continue?`)) {
+                        logEvent('API operation cancelled by user', 'info');
+                        return;
+                    }
+                }
+                
+                // Reset UI
+                resultContainer.style.display = 'none';
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                
+                showStatus('Sending data to API...', 'info');
+                logEvent(`Sending ${processedData.tasks.length} tasks to API`, 'info');
+                
+                // Simulate progress (in a real app, you'd track actual progress)
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += 5;
+                    if (progress > 90) {
+                        clearInterval(progressInterval);
+                    }
+                    progressBar.style.width = `${progress}%`;
+                }, 100);
+                
+                // Send to API
+                sendToAPI(processedData, apiKey)
+                    .then(() => {
+                        clearInterval(progressInterval);
+                        progressBar.style.width = '100%';
+                        
+                        // Hide progress after a delay
+                        setTimeout(() => {
+                            progressContainer.style.display = 'none';
+                        }, 1000);
+                    })
+                    .catch(() => {
+                        clearInterval(progressInterval);
+                        progressContainer.style.display = 'none';
+                    });
+            }
+            
+            function processData(data) {
+                // Track processed phone numbers to remove duplicates
+                const processedPhoneNumbers = new Set();
+                const tasks = [];
+                let duplicatesRemoved = 0;
+                
+                logEvent(`Processing ${data.length} rows`, 'info');
+                
+                data.forEach((row, index) => {
+                    // Get the first non-empty phone number
+                    let phoneNumber = '';
+                    for (let i = 1; i <= 5; i++) {
+                        const phoneKey = `Phone ${i}`;
+                        const phone = row[phoneKey] || '';
+                        if (phone && phone.trim()) {
+                            phoneNumber = formatPhoneNumber(phone.trim());
+                            break;
+                        }
+                    }
+                    
+                    // Skip if no phone
+                    if (!phoneNumber) {
+                        if (index < 5 || index > data.length - 5) {
+                            logEvent(`Row ${index + 1}: No valid phone number found`, 'warning');
+                        }
+                        return;
+                    }
+                    
+                    // Skip if already processed (duplicate)
+                    if (processedPhoneNumbers.has(phoneNumber)) {
+                        duplicatesRemoved++;
+                        if (duplicatesRemoved < 5) {
+                            logEvent(`Row ${index + 1}: Duplicate phone ${phoneNumber.replace(/\d(?=\d{4})/g, '*')} skipped`, 'info');
+                        } else if (duplicatesRemoved === 5) {
+                            logEvent(`Additional duplicate phones will not be logged individually`, 'info');
+                        }
+                        return;
+                    }
+                    
+                    // Add to processed set
+                    processedPhoneNumbers.add(phoneNumber);
+                    
+                    // Create task object
+                    tasks.push({
+                        to_number: phoneNumber,
+                        retell_llm_dynamic_variables: {
+                            clientLastName: row['Last Name'] || '',
+                            clientFullName: `${row['First Name'] || ''} ${row['Last Name'] || ''}`.trim(),
+                            clientPhoneNumber: phoneNumber,
+                            clientPropertyAddress: row['Property Address'] || ''
+                        }
+                    });
+                });
+                
+                logEvent(`Found ${tasks.length} unique phone numbers, removed ${duplicatesRemoved} duplicates`, 'success');
+                
+                // Create final payload
+                return {
+                    from_number: "+18163360138",
+                    tasks: tasks
+                };
+            }
+            
+            function formatPhoneNumber(phone) {
+                // Remove all non-digit characters
+                const digits = phone.replace(/\D/g, '');
+                
+                // Make sure it's a 10-digit number
+                if (digits.length === 10) {
+                    return `+1${digits}`;
+                } else if (digits.length === 11 && digits.startsWith('1')) {
+                    return `+${digits}`;
+                } else {
+                    // Return as is if it doesn't fit expected patterns
+                    return `+${digits}`;
+                }
+            }
+            
+            function sendToAPI(data, apiKey) {
+                showStatus('Sending data to API...', 'info');
+                
+                return fetch('https://api.retellai.com/create-batch-call', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': apiKey,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`API responded with status: ${response.status}`);
+                    }
+                    logEvent(`API responded with status: ${response.status}`, 'success');
+                    return response.json();
+                })
+                .then(responseData => {
+                    apiResponse.textContent = JSON.stringify(responseData, null, 2);
+                    resultContainer.style.display = 'block';
+                    showStatus('API request successful!', 'success');
+                    logEvent('API request completed successfully', 'success');
+                    return responseData;
+                })
+                .catch(error => {
+                    apiResponse.textContent = `Error: ${error.message}`;
+                    resultContainer.style.display = 'block';
+                    showStatus('API request failed: ' + error.message, 'error');
+                    logEvent('API error: ' + error.message, 'error');
+                    throw error;
+                });
+            }
+            
+            function showStatus(message, type) {
+                statusDiv.textContent = message;
+                statusDiv.className = `status ${type}`;
+                statusDiv.style.display = 'block';
+                
+                // Auto-hide success messages after 5 seconds
+                if (type === 'success') {
+                    setTimeout(() => {
+                        if (statusDiv.textContent === message) {
+                            statusDiv.style.display = 'none';
+                        }
+                    }, 5000);
+                }
+            }
+            
+            function logEvent(message, type) {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry ${type}`;
+                logEntry.innerHTML = `<span style="color:#777">[${timestamp}]</span> ${message}`;
+                logWindow.appendChild(logEntry);
+                logWindow.scrollTop = logWindow.scrollHeight;
+            }
+            
+            function togglePayload() {
+                const isCollapsed = fullPayloadContainer.style.display === 'none';
+                fullPayloadContainer.style.display = isCollapsed ? 'block' : 'none';
+                payloadToggle.textContent = isCollapsed ? 'Hide Full Payload' : 'Show Full Payload';
+                payloadToggle.classList.toggle('collapsed');
+            }
+            
+            function clearAll() {
+                // Clear form
+                csvFileInput.value = '';
+                startRowInput.value = '1';
+                endRowInput.value = '';
+                
+                // Reset data
+                csvData = null;
+                processedData = null;
+                
+                // Hide containers
+                resultContainer.style.display = 'none';
+                previewContainer.style.display = 'none';
+                csvInfoContainer.style.display = 'none';
+                progressContainer.style.display = 'none';
+                
+                // Log event
+                logEvent('All data cleared', 'info');
+                showStatus('All data has been cleared', 'info');
+            }
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                // Ctrl/Cmd + Enter to process
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    if (processedData) {
+                        processAndSendToAPI();
+                    } else {
+                        previewCSV();
+                    }
+                    e.preventDefault();
+                }
+                
+                // Escape to clear status
+                if (e.key === 'Escape') {
+                    statusDiv.style.display = 'none';
+                }
             });
-            */
-        }
-        
-        
-        function formatFileSize(bytes) {
-            if (bytes < 1024) return bytes + ' bytes';
-            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / 1048576).toFixed(1) + ' MB';
-        }
-        
-        function generateUUID() {
-            // Simple UUID generator for demo
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                const r = Math.random() * 16 | 0;
-                const v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-        
-        function updateProgress(percent) {
-            progressBar.style.width = `${percent}%`;
-            progressText.textContent = `${percent}%`;
-        }
-        
-        function logMessage(message, type = 'info') {
-            const timestamp = new Date().toLocaleTimeString();
-            const logEntry = document.createElement('div');
-            logEntry.className = `log-${type}`;
-            logEntry.textContent = `[${timestamp}] ${message}`;
-            logContainer.appendChild(logEntry);
-            logContainer.scrollTop = logContainer.scrollHeight;
-        }
+            
+            // Helper function to safely get values from CSV rows with different possible headers
+            function getFieldValue(row, possibleNames) {
+                for (const name of possibleNames) {
+                    if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
+                        return row[name];
+                    }
+                }
+                return '';
+            }
+        });
+    </script>
+</body>
+</html>
