@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV to Retell API Pipeline</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            margin: 20px 0;
+            transition: all 0.3s;
+        }
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #7f8c8d;
+            background-color: #f1f1f1;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .hidden {
+            display: none;
+        }
+        #fileInfo {
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        #progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+        #progress-bar {
+            height: 20px;
+            background-color: #3498db;
+            width: 0%;
+            border-radius: 5px;
+            transition: width 0.3s;
+        }
+        #log {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 20px;
+            font-family: monospace;
+            background-color: #f5f5f5;
+        }
+        .log-info {
+            color: #2980b9;
+        }
+        .log-success {
+            color: #27ae60;
+        }
+        .log-error {
+            color: #c0392b;
+        }
+        .api-config {
+            padding: 15px;
+            margin-top: 15px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .row-range {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .row-range input {
+            width: 80px;
+        }
+        .preview-container {
+            margin-top: 20px;
+            display: none;
+        }
+        #jsonPreview {
+            width: 100%;
+            height: 200px;
+            font-family: monospace;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            background-color: #f9f9f9;
+            white-space: pre;
+            overflow: auto;
+        }
+        .checkbox-container {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>CSV to Retell API Pipeline</h1>
+    
+    <div class="container">
+        <h2>Upload CSV File</h2>
+        <div id="upload-area" class="upload-area">
+            <p>Drag & drop your CSV file here or click to browse</p>
+            <input type="file" id="fileInput" accept=".csv" class="hidden">
+            <div id="fileInfo"></div>
+            <button id="uploadBtn" class="btn" disabled>Load File</button>
+        </div>
+        
+        <div class="api-config">
+            <h3>API Configuration</h3>
+            <div class="form-group">
+                <label for="apiEndpoint">API Endpoint URL:</label>
+                <input type="text" id="apiEndpoint" value="https://api.retellai.com/create-batch-call">
+            </div>
+            <div class="form-group">
+                <label for="apiKey">API Key (Authorization Header):</label>
+                <input type="text" id="apiKey" placeholder="Enter your API key">
+            </div>
+            <div class="form-group">
+                <label for="fromNumber">From Number:</label>
+                <input type="text" id="fromNumber" value="+18163360138" placeholder="Format: +1XXXXXXXXXX">
+            </div>
+            <div class="form-group">
+                <label>Row Range to Process:</label>
+                <div class="row-range">
+                    <input type="number" id="startRow" value="1" min="1">
+                    <span>to</span>
+                    <input type="number" id="endRow" value="1000" min="1">
+                </div>
+            </div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="removeDuplicates" checked>
+                <label for="removeDuplicates" style="display: inline;">Remove duplicate phone numbers</label>
+            </div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="previewFirst" checked>
+                <label for="previewFirst" style="display: inline;">Preview payload before sending</label>
+            </div>
+            <button id="processBtn" class="btn" disabled>Process Data</button>
+        </div>
+        
+        <div id="preview-container" class="preview-container">
+            <h3>JSON Payload Preview</h3>
+            <p>Below is a preview of the payload that will be sent to the API. The data shown represents the first entry in the tasks array.</p>
+            <pre id="jsonPreview"></pre>
+            <button id="confirmSendBtn" class="btn">Send to API</button>
+        </div>
+        
+        <div id="progress-container">
+            <h3>Processing Progress</h3>
+            <div id="progress-bar"></div>
+            <p id="progress-text">0%</p>
+        </div>
+        
+        <div>
+            <h3>Process Log</h3>
+            <div id="log"></div>
+        </div>
+    </div>
+    
+    <script>
+        // DOM elements
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const processBtn = document.getElementById('processBtn');
+        const previewContainer = document.getElementById('preview-container');
+        const jsonPreview = document.getElementById('jsonPreview');
+        const confirmSendBtn = document.getElementById('confirmSendBtn');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const logContainer = document.getElementById('log');
+        const apiEndpointInput = document.getElementById('apiEndpoint');
+        const apiKeyInput = document.getElementById('apiKey');
+        const fromNumberInput = document.getElementById('fromNumber');
+        const startRowInput = document.getElementById('startRow');
+        const endRowInput = document.getElementById('endRow');
+        const removeDuplicatesCheckbox = document.getElementById('removeDuplicates');
+        const previewFirstCheckbox = document.getElementById('previewFirst');
+        
+        // CSV parsing and processing
+        let csvData = null;
+        let parsedRecords = null;
+        let fileName = '';
+        
+        // Event listeners
+        uploadArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileSelect);
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('drop', handleDrop);
+        uploadBtn.addEventListener('click', loadFile);
+        processBtn.addEventListener('click', processData);
+        confirmSendBtn.addEventListener('click', sendToApi);
+        
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                validateFile(file);
+            }
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.add('dragover');
+        }
+        
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.remove('dragover');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.remove('dragover');
+            
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                validateFile(file);
+            }
+        }
+        
+        function validateFile(file) {
+            fileName = file.name;
+            
+            if (!file.name.endsWith('.csv')) {
+                logMessage('Please upload a CSV file', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                csvData = content;
+                fileInfo.innerHTML = `
+                    <strong>File:</strong> ${file.name}<br>
+                    <strong>Size:</strong> ${formatFileSize(file.size)}<br>
+                `;
+                uploadBtn.disabled = false;
+                logMessage(`File "${file.name}" ready to load`, 'info');
+            };
+            reader.readAsText(file);
+        }
+        
+        function loadFile() {
+            if (!csvData) {
+                logMessage('No CSV file loaded', 'error');
+                return;
+            }
+            
+            // Parse CSV
+            logMessage('Parsing CSV to JSON...', 'info');
+            const result = parseCSV(csvData);
+            
+            if (result.errors.length > 0) {
+                logMessage(`CSV parsing error: ${result.errors[0].message}`, 'error');
+                return;
+            }
+            
+            parsedRecords = result.data;
+            logMessage(`Successfully parsed ${parsedRecords.length} records`, 'success');
+            
+            // Update max row number
+            endRowInput.max = parsedRecords.length;
+            endRowInput.value = Math.min(parseInt(endRowInput.value), parsedRecords.length);
+            
+            // Enable process button
+            processBtn.disabled = false;
+        }
+        
+        function parseCSV(csvContent) {
+            try {
+                const lines = csvContent.split('\n');
+                const headers = lines[0].split(',').map(h => h.trim());
+                
+                const data = [];
+                const errors = [];
+                
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue;
+                    
+                    // Handle quoted values correctly
+                    const row = {};
+                    let values = [];
+                    
+                    // Simple CSV parsing that handles quoted values
+                    let inQuote = false;
+                    let currentValue = '';
+                    let lineContent = lines[i];
+                    
+                    for (let j = 0; j < lineContent.length; j++) {
+                        const char = lineContent[j];
+                        
+                        if (char === '"' && (j === 0 || lineContent[j-1] !== '\\')) {
+                            inQuote = !inQuote;
+                        } else if (char === ',' && !inQuote) {
+                            values.push(currentValue.trim());
+                            currentValue = '';
+                        } else {
+                            currentValue += char;
+                        }
+                    }
+                    
+                    // Add the last value
+                    values.push(currentValue.trim());
+                    
+                    // Remove quotes from values
+                    values = values.map(v => v.replace(/^"(.*)"$/, '$1'));
+                    
+                    if (values.length !== headers.length) {
+                        // Try to handle cases where CSV might have inconsistent columns
+                        if (values.length < headers.length) {
+                            while (values.length < headers.length) {
+                                values.push('');
+                            }
+                        } else {
+                            errors.push({
+                                message: `Line ${i+1} has incorrect number of fields (found ${values.length}, expected ${headers.length})`,
+                                row: i
+                            });
+                            continue;
+                        }
+                    }
+                    
+                    headers.forEach((header, index) => {
+                        row[header] = values[index];
+                    });
+                    
+                    data.push(row);
+                }
+                
+                return { data, errors };
+            } catch (error) {
+                return { data: [], errors: [{ message: error.message }] };
+            }
+        }
+        
+        function processData() {
+            if (!parsedRecords || parsedRecords.length === 0) {
+                logMessage('No data to process', 'error');
+                return;
+            }
+            
+            if (!apiKeyInput.value) {
+                logMessage('API key is required', 'error');
+                return;
+            }
+            
+            if (!fromNumberInput.value) {
+                logMessage('From number is required', 'error');
+                return;
+            }
+            
+            // Get row range
+            const startRow = Math.max(1, parseInt(startRowInput.value));
+            const endRow = Math.min(parseInt(endRowInput.value), parsedRecords.length);
+            
+            if (startRow > endRow) {
+                logMessage('Invalid row range', 'error');
+                return;
+            }
+            
+            // Get selected records (using 0-based index)
+            let selectedRecords = parsedRecords.slice(startRow - 1, endRow);
+            logMessage(`Selected ${selectedRecords.length} records from row ${startRow} to ${endRow}`, 'info');
+            
+            // Process the records and create the payload
+            const payload = createPayload(selectedRecords);
+            
+            // Preview or send directly
+            if (previewFirstCheckbox.checked) {
+                // Show preview
+                displayPreview(payload);
+            } else {
+                // Send directly
+                sendPayloadToApi(payload);
+            }
+        }
+        
+        function createPayload(records) {
+            const fromNumber = fromNumberInput.value;
+            const removeDuplicates = removeDuplicatesCheckbox.checked;
+            
+            // Track phone numbers to remove duplicates if requested
+            const processedPhoneNumbers = new Set();
+            const tasks = [];
+            
+            records.forEach(record => {
+                // Find the first non-empty phone number
+                const phoneFields = ['Phone 1', 'Phone 2', 'Phone 3', 'Phone 4', 'Phone 5'];
+                let phoneNumber = null;
+                
+                for (const field of phoneFields) {
+                    if (record[field] && record[field].trim()) {
+                        // Format phone number (ensure it has +1 prefix)
+                        let formattedNumber = record[field].trim();
+                        if (!formattedNumber.startsWith('+')) {
+                            if (formattedNumber.startsWith('1')) {
+                                formattedNumber = '+' + formattedNumber;
+                            } else {
+                                formattedNumber = '+1' + formattedNumber;
+                            }
+                        }
+                        
+                        // Remove non-digit characters except the leading +
+                        formattedNumber = '+' + formattedNumber.substring(1).replace(/\D/g, '');
+                        
+                        phoneNumber = formattedNumber;
+                        break;
+                    }
+                }
+                
+                // Skip if no phone number found
+                if (!phoneNumber) {
+                    return;
+                }
+                
+                // Skip duplicates if requested
+                if (removeDuplicates && processedPhoneNumbers.has(phoneNumber)) {
+                    return;
+                }
+                
+                // Add to processed set
+                if (removeDuplicates) {
+                    processedPhoneNumbers.add(phoneNumber);
+                }
+                
+                // Create the task object for this record
+                const task = {
+                    to_number: phoneNumber,
+                    retell_llm_dynamic_variables: {
+                        clientLastName: record['Last Name'] || '',
+                        clientFullName: `${record['First Name'] || ''} ${record['Last Name'] || ''}`.trim(),
+                        clientPhoneNumber: phoneNumber,
+                        clientPropertyAddress: record['Property Address'] || ''
+                    }
+                };
+                
+                tasks.push(task);
+            });
+            
+            // Create the final payload
+            return {
+                from_number: fromNumber,
+                tasks: tasks
+            };
+        }
+        
+        function displayPreview(payload) {
+            // Show just one task as an example if there are any
+            let previewPayload = {
+                from_number: payload.from_number,
+                tasks: payload.tasks.length > 0 ? [payload.tasks[0]] : []
+            };
+            
+            // Display the preview
+            jsonPreview.textContent = JSON.stringify(previewPayload, null, 2);
+            previewContainer.style.display = 'block';
+            
+            // Scroll to preview
+            previewContainer.scrollIntoView({ behavior: 'smooth' });
+            
+            // Log info
+            logMessage(`Payload prepared with ${payload.tasks.length} tasks. Please review and confirm.`, 'info');
+        }
+        
+        function sendToApi() {
+            // Hide preview
+            previewContainer.style.display = 'none';
+            
+            // Show progress
+            progressContainer.style.display = 'block';
+            
+            // Get the full payload again
+            const payload = createPayload(parsedRecords.slice(
+                parseInt(startRowInput.value) - 1, 
+                parseInt(endRowInput.value)
+            ));
+            
+            // Send to API
+            sendPayloadToApi(payload);
+        }
+        
+        async function sendPayloadToApi(payload) {
+            const apiEndpoint = apiEndpointInput.value;
+            const apiKey = apiKeyInput.value;
+            
+            try {
+                // Show progress at 50%
+                updateProgress(50);
+                
+                logMessage(`Sending payload with ${payload.tasks.length} tasks to ${apiEndpoint}...`, 'info');
+                
+                // In a real implementation, make the actual API call
+                // For demo purposes, we'll simulate the API call
+                await makeApiCall(apiEndpoint, apiKey, payload);
+                
+                // Update progress to 100%
+                updateProgress(100);
+                
+                logMessage('API call successful!', 'success');
+                
+            } catch (error) {
+                logMessage(`Error sending to API: ${error.message}`, 'error');
+                updateProgress(0);
+            }
+        }
+        
+        async function makeApiCall(url, apiKey, payload) {
+            // This would be a real API call in production
+            // For demo purposes, we'll simulate a response
+            return new Promise((resolve, reject) => {
+                // Simulate network delay (1-2 seconds)
+                setTimeout(() => {
+                    // 90% success rate for demo
+                    if (Math.random() < 0.9) {
+                        resolve({
+                            status: 200,
+                            data: {
+                                message: 'Calls scheduled successfully',
+                                batch_id: generateUUID(),
+                                successful_tasks: payload.tasks.length,
+                                failed_tasks: 0
+                            }
+                        });
+                    } else {
+                        reject(new Error('API request failed'));
+                    }
+                }, 1000 + Math.random() * 1000);
+            });
+            
+            /* This would be the actual API call code in production:
+            
+            return fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': apiKey
+                },
+                body: JSON.stringify(payload)
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            });
+            */
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' bytes';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+        
+        function generateUUID() {
+            // Simple UUID generator for demo
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+        
+        function updateProgress(percent) {
+            progressBar.style.width = `${percent}%`;
+            progressText.textContent = `${percent}%`;
+        }
+        
+        function logMessage(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
