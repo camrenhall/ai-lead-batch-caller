@@ -54,7 +54,15 @@
             cursor: not-allowed;
         }
         .hidden {
-            display: none;
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
         #fileInfo {
             margin: 15px 0;
@@ -149,6 +157,13 @@
             <button id="uploadBtn" class="btn" disabled>Load File</button>
         </div>
         
+        <!-- Direct button for CSV upload as fallback -->
+        <div style="text-align: center; margin: 15px 0;">
+            <button onclick="document.getElementById('fileInput').click();" class="btn" style="background-color: #27ae60;">
+                Browse for CSV
+            </button>
+        </div>
+        
         <div class="api-config">
             <h3>API Configuration</h3>
             <div class="form-group">
@@ -203,40 +218,70 @@
     
     <script>
         // DOM elements
-        const uploadArea = document.getElementById('upload-area');
-        const fileInput = document.getElementById('fileInput');
-        const fileInfo = document.getElementById('fileInfo');
-        const uploadBtn = document.getElementById('uploadBtn');
-        const processBtn = document.getElementById('processBtn');
-        const previewContainer = document.getElementById('preview-container');
-        const jsonPreview = document.getElementById('jsonPreview');
-        const confirmSendBtn = document.getElementById('confirmSendBtn');
-        const progressContainer = document.getElementById('progress-container');
-        const progressBar = document.getElementById('progress-bar');
-        const progressText = document.getElementById('progress-text');
-        const logContainer = document.getElementById('log');
-        const apiEndpointInput = document.getElementById('apiEndpoint');
-        const apiKeyInput = document.getElementById('apiKey');
-        const fromNumberInput = document.getElementById('fromNumber');
-        const startRowInput = document.getElementById('startRow');
-        const endRowInput = document.getElementById('endRow');
-        const removeDuplicatesCheckbox = document.getElementById('removeDuplicates');
-        const previewFirstCheckbox = document.getElementById('previewFirst');
+        let uploadArea;
+        let fileInput;
+        let fileInfo;
+        let uploadBtn;
+        let processBtn;
+        let previewContainer;
+        let jsonPreview;
+        let confirmSendBtn;
+        let progressContainer;
+        let progressBar;
+        let progressText;
+        let logContainer;
+        let apiEndpointInput;
+        let apiKeyInput;
+        let fromNumberInput;
+        let startRowInput;
+        let endRowInput;
+        let removeDuplicatesCheckbox;
+        let previewFirstCheckbox;
         
         // CSV parsing and processing
         let csvData = null;
         let parsedRecords = null;
         let fileName = '';
         
-        // Event listeners
-        uploadArea.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', handleFileSelect);
-        uploadArea.addEventListener('dragover', handleDragOver);
-        uploadArea.addEventListener('dragleave', handleDragLeave);
-        uploadArea.addEventListener('drop', handleDrop);
-        uploadBtn.addEventListener('click', loadFile);
-        processBtn.addEventListener('click', processData);
-        confirmSendBtn.addEventListener('click', sendToApi);
+        // Initialize the application when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize DOM elements
+            uploadArea = document.getElementById('upload-area');
+            fileInput = document.getElementById('fileInput');
+            fileInfo = document.getElementById('fileInfo');
+            uploadBtn = document.getElementById('uploadBtn');
+            processBtn = document.getElementById('processBtn');
+            previewContainer = document.getElementById('preview-container');
+            jsonPreview = document.getElementById('jsonPreview');
+            confirmSendBtn = document.getElementById('confirmSendBtn');
+            progressContainer = document.getElementById('progress-container');
+            progressBar = document.getElementById('progress-bar');
+            progressText = document.getElementById('progress-text');
+            logContainer = document.getElementById('log');
+            apiEndpointInput = document.getElementById('apiEndpoint');
+            apiKeyInput = document.getElementById('apiKey');
+            fromNumberInput = document.getElementById('fromNumber');
+            startRowInput = document.getElementById('startRow');
+            endRowInput = document.getElementById('endRow');
+            removeDuplicatesCheckbox = document.getElementById('removeDuplicates');
+            previewFirstCheckbox = document.getElementById('previewFirst');
+            
+            // Event listeners
+            uploadArea.addEventListener('click', function() {
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', handleFileSelect);
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('dragleave', handleDragLeave);
+            uploadArea.addEventListener('drop', handleDrop);
+            uploadBtn.addEventListener('click', loadFile);
+            processBtn.addEventListener('click', processData);
+            confirmSendBtn.addEventListener('click', sendToApi);
+            
+            // Add initial log message
+            logMessage('CSV to API Pipeline ready. Please upload a CSV file.', 'info');
+        });
         
         function handleFileSelect(e) {
             const file = e.target.files[0];
@@ -277,6 +322,7 @@
             }
             
             const reader = new FileReader();
+            
             reader.onload = function(e) {
                 const content = e.target.result;
                 csvData = content;
@@ -287,7 +333,20 @@
                 uploadBtn.disabled = false;
                 logMessage(`File "${file.name}" ready to load`, 'info');
             };
+            
+            reader.onerror = function() {
+                logMessage('Error reading the file', 'error');
+            };
+            
             reader.readAsText(file);
+            
+            // Also show the filename immediately to provide feedback
+            fileInfo.innerHTML = `
+                <strong>File:</strong> ${file.name}<br>
+                <strong>Size:</strong> ${formatFileSize(file.size)}<br>
+                <em>Reading file contents...</em>
+            `;
+            logMessage(`Reading file: "${file.name}"`, 'info');
         }
         
         function loadFile() {
@@ -298,22 +357,43 @@
             
             // Parse CSV
             logMessage('Parsing CSV to JSON...', 'info');
-            const result = parseCSV(csvData);
             
-            if (result.errors.length > 0) {
-                logMessage(`CSV parsing error: ${result.errors[0].message}`, 'error');
-                return;
+            try {
+                const result = parseCSV(csvData);
+                
+                if (result.errors && result.errors.length > 0) {
+                    logMessage(`CSV parsing error: ${result.errors[0].message}`, 'error');
+                    return;
+                }
+                
+                parsedRecords = result.data;
+                
+                if (!parsedRecords || parsedRecords.length === 0) {
+                    logMessage('No valid records found in CSV', 'error');
+                    return;
+                }
+                
+                logMessage(`Successfully parsed ${parsedRecords.length} records`, 'success');
+                
+                // Update max row number
+                endRowInput.max = parsedRecords.length;
+                endRowInput.value = Math.min(parseInt(endRowInput.value) || parsedRecords.length, parsedRecords.length);
+                
+                // Enable process button
+                processBtn.disabled = false;
+                
+                // Show sample of parsed data
+                if (parsedRecords.length > 0) {
+                    const sampleKeys = Object.keys(parsedRecords[0]).slice(0, 3);
+                    let sampleInfo = "Sample data (first row): ";
+                    sampleKeys.forEach(key => {
+                        sampleInfo += `${key}: "${parsedRecords[0][key]}", `;
+                    });
+                    logMessage(sampleInfo.slice(0, -2), 'info');
+                }
+            } catch (error) {
+                logMessage(`Error processing CSV: ${error.message}`, 'error');
             }
-            
-            parsedRecords = result.data;
-            logMessage(`Successfully parsed ${parsedRecords.length} records`, 'success');
-            
-            // Update max row number
-            endRowInput.max = parsedRecords.length;
-            endRowInput.value = Math.min(parseInt(endRowInput.value), parsedRecords.length);
-            
-            // Enable process button
-            processBtn.disabled = false;
         }
         
         function parseCSV(csvContent) {
