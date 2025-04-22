@@ -511,7 +511,7 @@
                 
                 // Confirm with user if there are many tasks
                 if (processedData.tasks.length > 50) {
-                    if (!confirm(`You are about to send ${processedData.tasks.length} API calls. Continue?`)) {
+                    if (!confirm(`You are about to send 1 API call with ${processedData.tasks.length} tasks. Continue?`)) {
                         logEvent('API operation cancelled by user', 'info');
                         return;
                     }
@@ -523,7 +523,7 @@
                 progressBar.style.width = '0%';
                 
                 showStatus('Sending data to API...', 'info');
-                logEvent(`Sending ${processedData.tasks.length} tasks to API`, 'info');
+                logEvent(`Sending 1 API call with ${processedData.tasks.length} tasks`, 'info');
                 
                 // Simulate progress (in a real app, you'd track actual progress)
                 let progress = 0;
